@@ -18,6 +18,8 @@
 
 #define MEDIA_DEFS_H_
 
+#include <stdint.h>
+
 namespace android {
 
 extern const char *MEDIA_MIMETYPE_IMAGE_JPEG;
@@ -68,15 +70,113 @@ extern const char *MEDIA_MIMETYPE_TEXT_CEA_608;
 extern const char *MEDIA_MIMETYPE_TEXT_CEA_708;
 extern const char *MEDIA_MIMETYPE_DATA_TIMED_ID3;
 
+extern const char *MEDIA_MIMETYPE_AUDIO_EAC3_JOC;
+extern const char *MEDIA_MIMETYPE_AUDIO_EAC3;
+
+extern const char *MEDIA_MIMETYPE_VIDEO_DIVX;
+extern const char *MEDIA_MIMETYPE_VIDEO_DIVX311;
+extern const char *MEDIA_MIMETYPE_VIDEO_DIVX4;
+extern const char *MEDIA_MIMETYPE_VIDEO_FLV1;
+extern const char *MEDIA_MIMETYPE_VIDEO_MJPEG;
+extern const char *MEDIA_MIMETYPE_VIDEO_MPEG4_DP;
+extern const char *MEDIA_MIMETYPE_VIDEO_RV;
+extern const char *MEDIA_MIMETYPE_VIDEO_VC1;
+extern const char *MEDIA_MIMETYPE_VIDEO_WMV;
+extern const char *MEDIA_MIMETYPE_VIDEO_WMV_VC1;
+extern const char *MEDIA_MIMETYPE_VIDEO_VPX;
+extern const char *MEDIA_MIMETYPE_VIDEO_FFMPEG;
+
+extern const char *MEDIA_MIMETYPE_AUDIO_AIFF;
+extern const char *MEDIA_MIMETYPE_AUDIO_ALAC;
+extern const char *MEDIA_MIMETYPE_AUDIO_AMR_WB_PLUS;
+extern const char *MEDIA_MIMETYPE_AUDIO_APE;
+extern const char *MEDIA_MIMETYPE_AUDIO_DSD;
+extern const char *MEDIA_MIMETYPE_AUDIO_DTS;
+extern const char *MEDIA_MIMETYPE_AUDIO_DTS_LBR;
+extern const char *MEDIA_MIMETYPE_AUDIO_EVRC;
+extern const char *MEDIA_MIMETYPE_AUDIO_PCM;
+extern const char *MEDIA_MIMETYPE_AUDIO_RA;
+extern const char *MEDIA_MIMETYPE_AUDIO_WMA;
+extern const char *MEDIA_MIMETYPE_AUDIO_WMA_LOSSLESS;
+extern const char *MEDIA_MIMETYPE_AUDIO_WMA_PRO;
+extern const char *MEDIA_MIMETYPE_AUDIO_FFMPEG;
+
+extern const char *MEDIA_MIMETYPE_CONTAINER_3G2;
+extern const char *MEDIA_MIMETYPE_CONTAINER_AAC;
+extern const char *MEDIA_MIMETYPE_CONTAINER_APE;
+extern const char *MEDIA_MIMETYPE_CONTAINER_ASF;
+extern const char *MEDIA_MIMETYPE_CONTAINER_DIVX;
+extern const char *MEDIA_MIMETYPE_CONTAINER_DSF;
+extern const char *MEDIA_MIMETYPE_CONTAINER_DFF;
+extern const char *MEDIA_MIMETYPE_CONTAINER_DTS;
+extern const char *MEDIA_MIMETYPE_CONTAINER_FLAC;
+extern const char *MEDIA_MIMETYPE_CONTAINER_FLV;
+extern const char *MEDIA_MIMETYPE_CONTAINER_MPEG2;
+extern const char *MEDIA_MIMETYPE_CONTAINER_MOV;
+extern const char *MEDIA_MIMETYPE_CONTAINER_MP2;
+extern const char *MEDIA_MIMETYPE_CONTAINER_MPG;
+extern const char *MEDIA_MIMETYPE_CONTAINER_QCAMR_NB;
+extern const char *MEDIA_MIMETYPE_CONTAINER_QCAMR_WB;
+extern const char *MEDIA_MIMETYPE_CONTAINER_QCMPEG;
+extern const char *MEDIA_MIMETYPE_CONTAINER_QCWAV;
+extern const char *MEDIA_MIMETYPE_CONTAINER_QCMPEG2TS;
+extern const char *MEDIA_MIMETYPE_CONTAINER_QCMPEG2PS;
+extern const char *MEDIA_MIMETYPE_CONTAINER_QCMPEG4;
+extern const char *MEDIA_MIMETYPE_CONTAINER_QCMATROSKA;
+extern const char *MEDIA_MIMETYPE_CONTAINER_QCOGG;
+extern const char *MEDIA_MIMETYPE_CONTAINER_QCFLV;
+extern const char *MEDIA_MIMETYPE_CONTAINER_QCP;
+extern const char *MEDIA_MIMETYPE_CONTAINER_QTIFLAC;
+extern const char *MEDIA_MIMETYPE_CONTAINER_RA;
+extern const char *MEDIA_MIMETYPE_CONTAINER_RM;
+extern const char *MEDIA_MIMETYPE_CONTAINER_TS;
+extern const char *MEDIA_MIMETYPE_CONTAINER_WEBM;
+extern const char *MEDIA_MIMETYPE_CONTAINER_VC1;
+extern const char *MEDIA_MIMETYPE_CONTAINER_HEVC;
+extern const char *MEDIA_MIMETYPE_CONTAINER_WMA;
+extern const char *MEDIA_MIMETYPE_CONTAINER_WMV;
+extern const char *MEDIA_MIMETYPE_CONTAINER_FFMPEG;
+
 // These are values exported to JAVA API that need to be in sync with
 // frameworks/base/media/java/android/media/AudioFormat.java. Unfortunately,
 // they are not defined in frameworks/av, so defining them here.
 enum AudioEncoding {
+    kAudioEncodingInvalid = 0,
     kAudioEncodingPcm16bit = 2,
     kAudioEncodingPcm8bit = 3,
     kAudioEncodingPcmFloat = 4,
     kAudioEncodingPcm24bitPacked = 100,
 };
+
+static inline AudioEncoding bitsToAudioEncoding(int32_t bits) {
+    switch (bits) {
+        case 8:
+            return kAudioEncodingPcm8bit;
+        case 16:
+            return kAudioEncodingPcm16bit;
+        case 24:
+            return kAudioEncodingPcm24bitPacked;
+        case 32:
+            return kAudioEncodingPcmFloat;
+    }
+    return kAudioEncodingInvalid;
+}
+
+static inline int32_t audioEncodingToBits(AudioEncoding encoding) {
+    switch (encoding) {
+        case kAudioEncodingInvalid:
+            return 0;
+        case kAudioEncodingPcm8bit:
+            return 8;
+        case kAudioEncodingPcm16bit:
+            return 16;
+        case kAudioEncodingPcm24bitPacked:
+            return 24;
+        case kAudioEncodingPcmFloat:
+            return 32;
+    }
+    return 0;
+}
 
 }  // namespace android
 
