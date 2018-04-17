@@ -46,6 +46,8 @@
 
 #include <media/CharacterEncodingDetector.h>
 
+#include <stagefright/AVExtensions.h>
+
 namespace android {
 
 static const int64_t kBufferTimeOutUs = 30000ll; // 30 msec
@@ -104,6 +106,7 @@ status_t StagefrightMetadataRetriever::setDataSource(
     fd = dup(fd);
 
     ALOGV("setDataSource(%d, %" PRId64 ", %" PRId64 ")", fd, offset, length);
+    AVUtils::get()->printFileName(fd);
 
     clearMetadata();
     mSource = new FileSource(fd, offset, length);
@@ -424,9 +427,9 @@ static VideoFrame *extractVideoFrame(
             if (err != OK) {
                 ALOGW("Input Error or EOS");
                 haveMoreInputs = false;
-                if (err == ERROR_END_OF_STREAM) {
-                    err = OK;
-                }
+                //correct the status to continue get output from decoder
+                err = OK;
+                inputIndex = -1;
                 break;
             }
             if (firstSample && isSeekingClosest) {

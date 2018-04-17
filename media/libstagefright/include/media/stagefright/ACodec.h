@@ -102,8 +102,11 @@ struct ACodec : public AHierarchicalStateMachine, public CodecBase {
 
 protected:
     virtual ~ACodec();
+    virtual status_t setupCustomCodec(
+            status_t err, const char *mime, const sp<AMessage> &msg);
+    virtual status_t GetVideoCodingTypeFromMime(
+            const char *mime, OMX_VIDEO_CODINGTYPE *codingType);
 
-private:
     struct BaseState;
     struct UninitializedState;
     struct LoadedState;
@@ -146,7 +149,9 @@ private:
 
     enum {
         kPortIndexInput  = 0,
-        kPortIndexOutput = 1
+        kPortIndexOutput = 1,
+        kPortIndexInputExtradata = 2,
+        kPortIndexOutputExtradata = 3
     };
 
     enum {
@@ -234,8 +239,8 @@ private:
     sp<IOMXNode> mOMXNode;
     int32_t mNodeGeneration;
     bool mTrebleFlag;
-    sp<TAllocator> mAllocator[2];
-    sp<MemoryDealer> mDealer[2];
+    sp<TAllocator> mAllocator[4];
+    sp<MemoryDealer> mDealer[4];
 
     bool mUsingNativeWindow;
     sp<ANativeWindow> mNativeWindow;
@@ -251,7 +256,7 @@ private:
     sp<AMessage> mBaseOutputFormat;
 
     FrameRenderTracker mRenderTracker; // render information for buffers rendered by ACodec
-    Vector<BufferInfo> mBuffers[2];
+    Vector<BufferInfo> mBuffers[4];
     bool mPortEOS[2];
     status_t mInputEOSResult;
 
@@ -306,8 +311,8 @@ private:
     } mVendorExtensionsStatus;
 
     status_t setCyclicIntraMacroblockRefresh(const sp<AMessage> &msg, int32_t mode);
-    status_t allocateBuffersOnPort(OMX_U32 portIndex);
-    status_t freeBuffersOnPort(OMX_U32 portIndex);
+    virtual status_t allocateBuffersOnPort(OMX_U32 portIndex);
+    virtual status_t freeBuffersOnPort(OMX_U32 portIndex);
     status_t freeBuffer(OMX_U32 portIndex, size_t i);
 
     status_t handleSetSurface(const sp<Surface> &surface);
@@ -343,7 +348,7 @@ private:
 
     status_t setComponentRole(bool isEncoder, const char *mime);
 
-    status_t configureCodec(const char *mime, const sp<AMessage> &msg);
+    virtual status_t configureCodec(const char *mime, const sp<AMessage> &msg);
 
     status_t configureTunneledVideoPlayback(int32_t audioHwSync,
             const sp<ANativeWindow> &nativeWindow);
@@ -356,11 +361,11 @@ private:
 
     status_t setSupportedOutputFormat(bool getLegacyFlexibleFormat);
 
-    status_t setupVideoDecoder(
+    virtual status_t setupVideoDecoder(
             const char *mime, const sp<AMessage> &msg, bool usingNativeBuffers, bool haveSwRenderer,
             sp<AMessage> &outputformat);
 
-    status_t setupVideoEncoder(
+    virtual status_t setupVideoEncoder(
             const char *mime, const sp<AMessage> &msg,
             sp<AMessage> &outputformat, sp<AMessage> &inputformat);
 
@@ -504,7 +509,7 @@ private:
             int32_t bitrate, OMX_VIDEO_CONTROLRATETYPE bitrateMode);
     void configureEncoderLatency(const sp<AMessage> &msg);
 
-    status_t setupErrorCorrectionParameters();
+    virtual status_t setupErrorCorrectionParameters();
 
     // Returns true iff all buffers on the given port have status
     // OWNED_BY_US or OWNED_BY_NATIVE_WINDOW.
@@ -544,14 +549,14 @@ private:
     void addKeyFormatChangesToRenderBufferNotification(sp<AMessage> &notify);
     void sendFormatChange();
 
-    status_t getPortFormat(OMX_U32 portIndex, sp<AMessage> &notify);
+    virtual status_t getPortFormat(OMX_U32 portIndex, sp<AMessage> &notify);
 
     void signalError(
             OMX_ERRORTYPE error = OMX_ErrorUndefined,
             status_t internalError = UNKNOWN_ERROR);
 
     status_t requestIDRFrame();
-    status_t setParameters(const sp<AMessage> &params);
+    virtual status_t setParameters(const sp<AMessage> &params);
 
     // set vendor extension parameters specified in params that are supported by the codec
     status_t setVendorParameters(const sp<AMessage> &params);
@@ -562,6 +567,20 @@ private:
 
     // Send EOS on input stream.
     void onSignalEndOfInputStream();
+
+    virtual void setBFrames(OMX_VIDEO_PARAM_MPEG4TYPE *mpeg4type) {}
+    virtual void setBFrames(OMX_VIDEO_PARAM_AVCTYPE *h264type,
+        const int32_t iFramesInterval, const int32_t frameRate) {}
+
+    virtual status_t getVQZIPInfo(const sp<AMessage> &msg) {
+        return OK;
+    }
+
+    virtual bool getDSModeHint(const sp<AMessage>& msg, int64_t timeUs) {
+        return false;
+    }
+
+    sp<IOMXObserver> createObserver();
 
     // Force EXEC->IDLE->LOADED shutdown sequence if not stale.
     void forceStateTransition(int generation);

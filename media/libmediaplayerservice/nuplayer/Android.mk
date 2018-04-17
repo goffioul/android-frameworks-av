@@ -24,9 +24,10 @@ LOCAL_C_INCLUDES := \
 	frameworks/av/media/libstagefright/rtsp                \
 	frameworks/av/media/libstagefright/timedtext           \
 	frameworks/av/media/libmediaplayerservice              \
-	frameworks/native/include/media/openmax
+	frameworks/native/include/media/openmax				   \
+	frameworks/av/media/libavextensions
 
-LOCAL_CFLAGS += -Werror -Wall
+LOCAL_CFLAGS += -Werror -Wno-unused-parameter -Wall
 
 # enable experiments only in userdebug and eng builds
 ifneq (,$(filter userdebug eng,$(TARGET_BUILD_VARIANT)))
@@ -35,10 +36,12 @@ endif
 
 LOCAL_SHARED_LIBRARIES :=       \
     libbinder                   \
+    libcrypto                   \
     libui                       \
     libgui                      \
     libmedia                    \
     libmediadrm                 \
+    libstagefright              \
 
 LOCAL_MODULE:= libstagefright_nuplayer
 

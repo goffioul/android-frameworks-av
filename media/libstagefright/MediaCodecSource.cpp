@@ -36,6 +36,8 @@
 #include <media/stagefright/MediaSource.h>
 #include <media/stagefright/MetaData.h>
 #include <media/stagefright/Utils.h>
+#include <stagefright/AVExtensions.h>
+#include <OMX_Core.h>
 
 namespace android {
 
@@ -196,9 +198,6 @@ void MediaCodecSource::Puller::stop() {
         queue->flush(); // flush any unprocessed pulled buffers
     }
 
-    if (interrupt) {
-        interruptSource();
-    }
 }
 
 void MediaCodecSource::Puller::interruptSource() {
@@ -352,7 +351,7 @@ sp<MediaCodecSource> MediaCodecSource::Create(
         uint32_t flags) {
     sp<MediaCodecSource> mediaSource = new MediaCodecSource(
             looper, format, source, persistentSurface, flags);
-
+    AVUtils::get()->getHFRParams(&mediaSource->mIsHFR, &mediaSource->mBatchSize, format);
     if (mediaSource->init() == OK) {
         return mediaSource;
     }
@@ -454,16 +453,24 @@ MediaCodecSource::MediaCodecSource(
       mFirstSampleSystemTimeUs(-1ll),
       mPausePending(false),
       mFirstSampleTimeUs(-1ll),
-      mGeneration(0) {
+      mGeneration(0),
+      mPrevBufferTimestampUs(0),
+      mIsHFR(false),
+      mBatchSize(0) {
     CHECK(mLooper != NULL);
 
     AString mime;
+    int32_t storeMeta = kMetadataBufferTypeInvalid;
     CHECK(mOutputFormat->findString("mime", &mime));
 
     if (!strncasecmp("video/", mime.c_str(), 6)) {
         mIsVideo = true;
     }
 
+    if (mOutputFormat->findInt32("android._input-metadata-buffer-type", &storeMeta)
+            && storeMeta == kMetadataBufferTypeNativeHandleSource) {
+        mFlags |= FLAG_USE_METADATA_INPUT;
+    }
     if (!(mFlags & FLAG_USE_SURFACE_INPUT)) {
         mPuller = new Puller(source);
     }
@@ -502,10 +509,14 @@ status_t MediaCodecSource::initEncoder() {
     CHECK(mOutputFormat->findString("mime", &outputMIME));
 
     Vector<AString> matchingCodecs;
-    MediaCodecList::findMatchingCodecs(
-            outputMIME.c_str(), true /* encoder */,
-            ((mFlags & FLAG_PREFER_SOFTWARE_CODEC) ? MediaCodecList::kPreferSoftwareCodecs : 0),
-            &matchingCodecs);
+    if (AVUtils::get()->useQCHWEncoder(mOutputFormat, &matchingCodecs)) {
+        ;
+    } else {
+        MediaCodecList::findMatchingCodecs(
+                outputMIME.c_str(), true /* encoder */,
+                ((mFlags & FLAG_PREFER_SOFTWARE_CODEC) ? MediaCodecList::kPreferSoftwareCodecs : 0),
+                &matchingCodecs);
+    }
 
     status_t err = NO_INIT;
     for (size_t ix = 0; ix < matchingCodecs.size(); ++ix) {
@@ -633,6 +644,13 @@ void MediaCodecSource::signalEOS(status_t err) {
             output->mBufferQueue.clear();
             output->mEncoderReachedEOS = true;
             output->mErrorCode = err;
+            if (err != ERROR_END_OF_STREAM) {
+                output->mErrorCode = ERROR_IO;
+                if (!(mFlags & FLAG_USE_SURFACE_INPUT)) {
+                    mStopping = true;
+                    mPuller->stop();
+                }
+            }
             output->mCond.signal();
 
             reachedEOS = true;
@@ -691,12 +709,17 @@ status_t MediaCodecSource::feedEncoderInputBuffers() {
                     return OK;
                 }
             }
-
+            mInputBufferTimeOffsetUs = AVUtils::get()->overwriteTimeOffset(mIsHFR,
+                mInputBufferTimeOffsetUs, &mPrevBufferTimestampUs, timeUs, mBatchSize);
             timeUs += mInputBufferTimeOffsetUs;
 
             // push decoding time for video, or drift time for audio
             if (mIsVideo) {
                 mDecodingTimeQueue.push_back(timeUs);
+                if (!(mFlags & FLAG_USE_SURFACE_INPUT)) {
+                    mbuf->meta_data()->setInt64(kKeyTime, timeUs);
+                    AVUtils::get()->addDecodingTimesFromBatch(mbuf, mDecodingTimeQueue);
+                }
             } else {
 #if DEBUG_DRIFT_TIME
                 if (mFirstSampleTimeUs < 0ll) {
@@ -717,7 +740,7 @@ status_t MediaCodecSource::feedEncoderInputBuffers() {
             if (err != OK || inbuf == NULL || inbuf->data() == NULL
                     || mbuf->data() == NULL || mbuf->size() == 0) {
                 mbuf->release();
-                signalEOS();
+                signalEOS(err);
                 break;
             }
 
@@ -748,8 +771,8 @@ status_t MediaCodecSource::feedEncoderInputBuffers() {
 }
 
 status_t MediaCodecSource::onStart(MetaData *params) {
-    if (mStopping) {
-        ALOGE("Failed to start while we're stopping");
+    if (mStopping | mOutput.lock()->mEncoderReachedEOS) {
+        ALOGE("Failed to start while we're stopping or encoder already stopped due to EOS error");
         return INVALID_OPERATION;
     }
     int64_t startTimeUs;
@@ -889,11 +912,13 @@ void MediaCodecSource::onMessageReceived(const sp<AMessage> &msg) {
             status_t err = mEncoder->getOutputBuffer(index, &outbuf);
             if (err != OK || outbuf == NULL || outbuf->data() == NULL
                 || outbuf->size() == 0) {
-                signalEOS();
+                signalEOS(err);
                 break;
             }
 
             MediaBuffer *mbuf = new MediaBuffer(outbuf->size());
+            sp<MetaData> meta = mbuf->meta_data();
+            AVUtils::get()->setDeferRelease(meta);
             mbuf->setObserver(this);
             mbuf->add_ref();
 
@@ -965,7 +990,7 @@ void MediaCodecSource::onMessageReceived(const sp<AMessage> &msg) {
                 mStopping = true;
                 mPuller->stop();
             }
-            signalEOS();
+            signalEOS(err);
        }
        break;
     }
@@ -1048,6 +1073,8 @@ void MediaCodecSource::onMessageReceived(const sp<AMessage> &msg) {
         if (generation != mGeneration) {
              break;
         }
+
+        releaseEncoder();
 
         if (!(mFlags & FLAG_USE_SURFACE_INPUT)) {
             ALOGV("source (%s) stopping", mIsVideo ? "video" : "audio");

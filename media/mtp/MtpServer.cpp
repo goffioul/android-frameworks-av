@@ -132,7 +132,7 @@ int MtpServer::configure(bool usePtp) {
 
     int ret = sHandle->configure(usePtp);
     if (ret) ALOGE("Failed to configure MTP driver!");
-    else android::base::SetProperty("sys.usb.ffs.mtp.ready", "1");
+    android::base::SetProperty("sys.usb.ffs.mtp.ready", "1");
 
     return ret;
 }
@@ -158,7 +158,7 @@ void MtpServer::removeStorage(MtpStorage* storage) {
 
 MtpStorage* MtpServer::getStorage(MtpStorageID id) {
     if (id == 0)
-        return mStorages[0];
+        return mStorages.empty() ? nullptr : mStorages[0];
     for (size_t i = 0; i < mStorages.size(); i++) {
         MtpStorage* storage = mStorages[i];
         if (storage->getStorageID() == id)

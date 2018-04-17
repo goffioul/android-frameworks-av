@@ -70,6 +70,14 @@ cc_library_shared {
         "avc_utils.cpp",
     ],
 
+    include_dirs: [
+        "frameworks/native/include/media/openmax",
+        "frameworks/native/include/media/hardware",
+        "frameworks/av/media/libavextensions",
+        "frameworks/av/media/libstagefright/mpeg2ts",
+        "system/libhidl/transport/token/1.0/utils/include",
+    ],
+
     shared_libs: [
         "libaudioutils",
         "libbinder",
@@ -102,12 +110,14 @@ cc_library_shared {
         "libRScpp",
         "libhidlbase",
         "libhidlmemory",
+        "libhidltransport",
         "android.hidl.allocator@1.0",
         "android.hidl.memory@1.0",
         "android.hidl.token@1.0-utils",
         "android.hardware.cas@1.0",
         "android.hardware.cas.native@1.0",
         "android.hardware.media.omx@1.0",
+        "android.hardware.media@1.0",
     ],
 
     static_libs: [
@@ -130,6 +140,10 @@ cc_library_shared {
         "android.hidl.allocator@1.0",
     ],
 
+    whole_static_libs: [
+        "libavextensions",
+    ],
+
     export_include_dirs: [
         "include",
     ],
@@ -138,6 +152,7 @@ cc_library_shared {
         "-Wno-multichar",
         "-Werror",
         "-Wno-error=deprecated-declarations",
+        "-Wno-unused-parameter",
         "-Wall",
     ],
 
@@ -145,6 +160,17 @@ cc_library_shared {
         debuggable: {
             // enable experiments only in userdebug and eng builds
             cflags: ["-DENABLE_STAGEFRIGHT_EXPERIMENTS"],
+        },
+        xos: {
+            cant_reallocate_omx_buffers: {
+                cflags: ["-DBOARD_CANT_REALLOCATE_OMX_BUFFERS"],
+            },
+            use_legacy_rescaling: {
+                cflags: ["-DUSE_LEGACY_RESCALING"],
+            },
+            qti_flac_decoder: {
+                cflags: ["-DQTI_FLAC_DECODER"],
+            },
         },
     },
 

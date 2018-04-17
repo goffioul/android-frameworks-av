@@ -275,6 +275,10 @@ protected:
         {
             return mDefaultOutputDevice;
         }
+        virtual const bool &getA2dpSuspended() const
+        {
+            return mA2dpSuspended;
+        }
 protected:
         void addOutput(audio_io_handle_t output, const sp<SwAudioOutputDescriptor>& outputDesc);
         void removeOutput(audio_io_handle_t output);
@@ -385,7 +389,7 @@ protected:
         // must be called every time a condition that affects the output choice for a given strategy
         // changes: connected device, phone state, force use...
         // Must be called before updateDevicesAndOutputs()
-        void checkOutputForStrategy(routing_strategy strategy);
+        virtual void checkOutputForStrategy(routing_strategy strategy);
 
         // Same as checkOutputForStrategy() but for a all strategies in order of priority
         void checkOutputForAllStrategies();
@@ -484,12 +488,12 @@ protected:
 
         // if argument "device" is different from AUDIO_DEVICE_NONE,  startSource() will force
         // the re-evaluation of the output device.
-        status_t startSource(const sp<AudioOutputDescriptor>& outputDesc,
+        virtual status_t startSource(const sp<AudioOutputDescriptor>& outputDesc,
                              audio_stream_type_t stream,
                              audio_devices_t device,
                              const char *address,
                              uint32_t *delayMs);
-        status_t stopSource(const sp<AudioOutputDescriptor>& outputDesc,
+        virtual status_t stopSource(const sp<AudioOutputDescriptor>& outputDesc,
                             audio_stream_type_t stream,
                             bool forceDeviceUpdate);
 
@@ -594,7 +598,7 @@ protected:
 
         // Audio Policy Engine Interface.
         AudioPolicyManagerInterface *mEngine;
-private:
+protected:
         // Add or remove AC3 DTS encodings based on user preferences.
         void filterSurroundFormats(FormatVector *formatsPtr);
         void filterSurroundChannelMasks(ChannelsVector *channelMasksPtr);
@@ -626,7 +630,7 @@ private:
                 SortedVector<audio_io_handle_t>& outputs /*out*/);
         uint32_t curAudioPortGeneration() const { return mAudioPortGeneration; }
         // internal method to return the output handle for the given device and format
-        audio_io_handle_t getOutputForDevice(
+        virtual audio_io_handle_t getOutputForDevice(
                 audio_devices_t device,
                 audio_session_t session,
                 audio_stream_type_t stream,
@@ -662,7 +666,7 @@ private:
                                                         AudioMix **policyMix = NULL);
 
         // Called by setDeviceConnectionState().
-        status_t setDeviceConnectionStateInt(audio_devices_t device,
+        virtual status_t setDeviceConnectionStateInt(audio_devices_t device,
                                                           audio_policy_dev_state_t state,
                                                           const char *device_address,
                                                           const char *device_name);
