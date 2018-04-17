@@ -160,7 +160,8 @@ cc_library_shared {
             // enable experiments only in userdebug and eng builds
             cflags: ["-DENABLE_STAGEFRIGHT_EXPERIMENTS"],
         },
-        xos: {
+        /* TODO
+        androidx86: {
             cant_reallocate_omx_buffers: {
                 cflags: ["-DBOARD_CANT_REALLOCATE_OMX_BUFFERS"],
             },
@@ -171,6 +172,7 @@ cc_library_shared {
                 cflags: ["-DQTI_FLAC_DECODER"],
             },
         },
+        */
     },
 
     sanitize: {

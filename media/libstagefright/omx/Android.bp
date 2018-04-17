@@ -91,7 +91,8 @@ cc_library_shared {
     },
 
      product_variables: {
-        xos: {
+        /* TODO
+        androidx86: {
             qcom_bsp_legacy: {
                 cflags: ["-DQCOM_BSP_LEGACY"],
             },
@@ -99,6 +100,7 @@ cc_library_shared {
                 cflags: ["-DQTI_FLAC_DECODER"],
             },
         },
+        */
     },
 }
 
